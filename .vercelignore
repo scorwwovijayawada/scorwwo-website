@@ -1,0 +1,20 @@
+node_modules
+.env
+.env.example
+
+# Legacy Python deployment (superseded by server.js) — not used on Vercel
+Procfile
+runtime.txt
+requirements.txt
+app.py
+tools/
+
+# Old/backup files not used at runtime
+server.old.js
+package.old.json
+start.bat
+start.ps1
+
+# Local docs, not needed in the deployment
+README_RUN.md
+README_DEPLOY.md

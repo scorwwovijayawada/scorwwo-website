@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Contact Enquiries - Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{--font-sans:'Plus Jakarta Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:14px;min-height:100vh;background:#f0f4ff;color:#26215C}
+
+.topbar{background:linear-gradient(135deg,#534AB7 0%,#7F77DD 50%,#1D9E75 100%);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.topbar-title{font-size:17px;font-weight:500;color:#fff;display:flex;align-items:center;gap:8px}
+.topbar-sub{font-size:12px;color:rgba(255,255,255,.8)}
+
+.content{padding:22px;max-width:1200px;margin:0 auto}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{border-radius:12px;padding:16px;color:#fff;position:relative;overflow:hidden}
+.stat-card-purple{background:#534AB7}
+.stat-card-teal{background:#0F6E56}
+.stat-label{font-size:11px;opacity:.85;margin-bottom:4px}
+.stat-val{font-size:24px;font-weight:500}
+.stat-icon{position:absolute;right:14px;top:14px;font-size:30px;opacity:.25}
+
+.filter-row{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.filter-row input{flex:1;min-width:200px}
+input,select{padding:9px 12px;border:1.5px solid #d0cff0;border-radius:8px;background:#fff;color:#26215C;font-size:13px;font-family:var(--font-sans)}
+input:focus,select:focus{outline:none;border-color:#534AB7;box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:all .15s;background:#534AB7;color:#fff}
+.btn:hover{background:#3C3489}
+
+.card{background:#fff;border:1px solid #e0e0f0;border-radius:14px;padding:1rem 1.25rem;margin-bottom:16px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;background:#EEEDFE;color:#3C3489;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+th:first-child{border-radius:8px 0 0 8px}
+th:last-child{border-radius:0 8px 8px 0}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f8;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f7f5ff}
+.msg-cell{max-width:320px;white-space:pre-wrap;color:#444}
+.muted{color:#888;font-size:12px}
+.empty-state{text-align:center;padding:40px 20px;color:#888}
+.loading{text-align:center;padding:40px 20px;color:#888}
+.error-box{color:#A32D2D;font-size:13px;margin-bottom:12px;background:#FCEBEB;padding:10px 14px;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title"><i class="ti ti-mail-opened"></i> Contact Us Enquiries</div>
+    <div class="topbar-sub">SCoRWWO website — submissions from the Contact Us form</div>
+  </div>
+  <button class="btn" onclick="loadEnquiries()"><i class="ti ti-refresh"></i> Refresh</button>
+</div>
+
+<div class="content">
+
+  <div id="error-box" class="error-box"></div>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-card-purple"><i class="ti ti-mail stat-icon"></i><div class="stat-label">Total enquiries</div><div class="stat-val" id="stat-total">-</div></div>
+    <div class="stat-card stat-card-teal"><i class="ti ti-calendar-event stat-icon"></i><div class="stat-label">Latest received</div><div class="stat-val" id="stat-latest" style="font-size:15px;padding-top:6px">-</div></div>
+  </div>
+
+  <div class="filter-row">
+    <input type="text" id="search-input" placeholder="Search by name, email, phone, or subject..." oninput="renderTable()">
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap" id="table-wrap">
+      <div class="loading"><i class="ti ti-loader-2"></i> Loading enquiries...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let enquiries=[];
+
+async function loadEnquiries(){
+  const errBox=document.getElementById('error-box');
+  errBox.style.display='none';
+  document.getElementById('table-wrap').innerHTML='<div class="loading"><i class="ti ti-loader-2"></i> Loading enquiries...</div>';
+  try{
+    const res=await fetch('/api/enquiries');
+    const data=await res.json();
+    if(!res.ok)throw new Error((data&&data.message)||'Failed to load enquiries.');
+    enquiries=data;
+    updateStats();
+    renderTable();
+  }catch(e){
+    errBox.textContent=e.message||'Failed to load enquiries.';
+    errBox.style.display='block';
+    document.getElementById('table-wrap').innerHTML='<div class="empty-state">Could not load data.</div>';
+  }
+}
+
+function updateStats(){
+  document.getElementById('stat-total').textContent=enquiries.length;
+  if(enquiries.length){
+    const d=new Date(enquiries[0].created_at);
+    document.getElementById('stat-latest').textContent=isNaN(d)?enquiries[0].created_at:d.toLocaleString('en-IN');
+  }else{
+    document.getElementById('stat-latest').textContent='-';
+  }
+}
+
+function fmtDate(v){
+  const d=new Date(v);
+  return isNaN(d)?(v||''):d.toLocaleString('en-IN');
+}
+
+function renderTable(){
+  const q=document.getElementById('search-input').value.trim().toLowerCase();
+  let rows=enquiries;
+  if(q){
+    rows=rows.filter(r=>
+      (r.full_name||'').toLowerCase().includes(q)||
+      (r.email||'').toLowerCase().includes(q)||
+      (r.phone||'').toLowerCase().includes(q)||
+      (r.subject||'').toLowerCase().includes(q)
+    );
+  }
+  const wrap=document.getElementById('table-wrap');
+  if(!rows.length){
+    wrap.innerHTML='<div class="empty-state"><i class="ti ti-inbox" style="font-size:28px"></i><div style="margin-top:8px">No enquiries found.</div></div>';
+    return;
+  }
+  wrap.innerHTML=`<table>
+    <thead><tr>
+      <th>#</th><th>Received</th><th>Name</th><th>Email</th><th>Phone</th><th>Subject</th><th>Message</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map((r,i)=>`<tr>
+        <td class="muted">${i+1}</td>
+        <td class="muted" style="white-space:nowrap">${fmtDate(r.created_at)}</td>
+        <td style="font-weight:500">${escapeHtml(r.full_name)}</td>
+        <td>${escapeHtml(r.email)}</td>
+        <td>${escapeHtml(r.phone)}</td>
+        <td>${escapeHtml(r.subject)}</td>
+        <td class="msg-cell">${escapeHtml(r.message)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function escapeHtml(v){
+  const div=document.createElement('div');
+  div.textContent=v||'';
+  return div.innerHTML;
+}
+
+loadEnquiries();
+</script>
+
+</body>
+</html>
